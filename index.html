@@ -21,6 +21,7 @@ Features
 <body bgcolor=#000>
 <canvas id=c style='touch-action:none;position:absolute;left:0px;top:0px;width:100%;height:100%'></canvas>
 <a hidden id=downloadLink></a>
+<script src="https://unpkg.com/launchdarkly-js-client-sdk@2"></script>
 <script>
     
 'use strict';                        // strict mode
@@ -84,6 +85,10 @@ let road;                       // the list of road segments
 let time;                       // time left before game over
 let lastUpdate = 0;             // time of last update
 let timeBuffer = 0;             // frame rate adjustment
+
+let shouldShowTrees;
+let shouldShowRocks;
+let shouldShowMountains;
 
 function StartLevel()
 { 
@@ -305,19 +310,21 @@ function Update()
     }
 
     // draw mountains
-    for( i = mountainCount; i--; )                                              // draw every mountain
-    {
-        const angle = ClampAngle(worldHeading+Random(19));                      // mountain random angle
-        const lighting = Math.cos(angle-worldHeading);                          // mountain lighting
-        DrawPoly(
-            x = c.width*(.5+Lerp(angle/Math.PI/2+.5, 4, -4)-cameraOffset),      // mountain x pos, move far away for wrap
-            y = horizon,                                                        // mountain base
-            w = Random(.2,.8)**2*c.width/2,                                     // mountain width
-            x+w*Random(-.5,.5),                                                 // random tip skew
-            y - Random(.5,.8)*w, 0,                                             // mountain height
-            LSHA(Random(15,25)+i/3-lighting*9,i/2+Random(19),Random(220,230))); // mountain color
+    if (shouldShowMountains) {
+        for( i = mountainCount; i--; )                                              // draw every mountain
+        {
+            const angle = ClampAngle(worldHeading+Random(19));                      // mountain random angle
+            const lighting = Math.cos(angle-worldHeading);                          // mountain lighting
+            DrawPoly(
+                x = c.width*(.5+Lerp(angle/Math.PI/2+.5, 4, -4)-cameraOffset),      // mountain x pos, move far away for wrap
+                y = horizon,                                                        // mountain base
+                w = Random(.2,.8)**2*c.width/2,                                     // mountain width
+                x+w*Random(-.5,.5),                                                 // random tip skew
+                y - Random(.5,.8)*w, 0,                                             // mountain height
+                LSHA(Random(15,25)+i/3-lighting*9,i/2+Random(19),Random(220,230))); // mountain color
+        }
     }
-    
+        
     // draw horizon
     DrawPoly(c.width/2, horizon, c.width/2, c.width/2, c.height, c.width/2,     // horizon pos & size
         LSHA(25, 30, 95));                                                      // horizon color
@@ -407,7 +414,7 @@ function Update()
 
                 // draw road object
                 const alpha = Lerp(i/drawDistance, 4, 0);                        // fade in object alpha
-                if (height)                                                      // tree           
+                if (height && shouldShowTrees)                                                      // tree           
                 {
                     DrawPoly(x = p1.x+p1.z * x, p1.y, p1.z*29,                   // trunk bottom
                         x, p1.y-99*p1.z, p1.z*29,                                // trunk top
@@ -416,7 +423,7 @@ function Update()
                         x, p1.y-Random(600,800)*p1.z, 0,                         // leaves top
                         LSHA(25+Random(9), 80+Random(9), 9+Random(29), alpha));  // leaves color
                 }
-                else                                                                           // rock
+                else if (shouldShowRocks)                                                      // rock
                 {
                     DrawPoly(x = p1.x+p1.z * x, p1.y, p1.z*Random(200,250),                    // rock bottom
                         x+p1.z*(Random(99,-99)), p1.y-Random(200,250)*p1.z, p1.z*Random(99),   // rock top
@@ -672,7 +679,28 @@ function UpdateInput()
     inputWasPushed = inputIsDown.map((e,i) => e && !inputWasDown[i]);
     inputWasDown = inputIsDown.slice();
 }
-    
+
+
+var user = {
+    "firstName": "Bob",
+    "lastName": "Loblaw",
+    "key": "bob@example.com",
+    "custom": {
+        "groups": "beta_testers"
+    }
+};
+var ldclient = LDClient.initialize('60e58254d4734b0c78a0bbc4', user);
+function render() {
+    shouldShowTrees = ldclient.variation("trees", false);
+    console.log("Trees: "+shouldShowTrees);
+    shouldShowRocks = ldclient.variation("rocks", false);
+    console.log("Rocks: "+shouldShowRocks);
+    shouldShowMountains = ldclient.variation("mountains", false);
+    console.log("Mountains: "+shouldShowMountains);
+}
+
+ldclient.on('ready', render);
+ldclient.on('change', render);
 /////////////////////////////////////////////////////////////////////////////////////
 // init hue jumper
 /////////////////////////////////////////////////////////////////////////////////////
